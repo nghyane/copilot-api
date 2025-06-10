@@ -33,7 +33,7 @@ export async function handleCompletion(c: Context) {
 
     payload = {
       ...payload,
-      max_tokens: selectedModel?.capabilities.limits.max_output_tokens,
+      max_tokens: selectedModel?.capabilities?.limits?.max_output_tokens,
     }
   }
 
