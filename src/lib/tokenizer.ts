@@ -1,6 +1,6 @@
 import { countTokens } from "gpt-tokenizer/model/gpt-4o"
 
-import type { Message, ContentPart, ToolCall } from "~/services/copilot/create-chat-completions"
+import type { MessageRole } from "~/services/copilot/create-chat-completions"
 
 // Convert Message to gpt-tokenizer compatible format
 interface ChatMessage {
@@ -8,14 +8,26 @@ interface ChatMessage {
   content: string
 }
 
-const convertToTokenizerFormat = (message: Message): ChatMessage | null => {
+// Generic message type for tokenizer
+interface TokenizerMessage {
+  role: MessageRole
+  content: string | Array<any> | null
+  tool_calls?: Array<any>
+  tool_call_id?: string
+  name?: string
+  [key: string]: any
+}
+
+const convertToTokenizerFormat = (
+  message: TokenizerMessage,
+): ChatMessage | null => {
   // Handle tool role messages - convert to assistant for token counting
   const role = message.role === "tool" ? "assistant" : message.role
 
   // Handle string content
   if (typeof message.content === "string") {
     return {
-      role: role as "user" | "assistant" | "system",
+      role: role,
       content: message.content,
     }
   }
@@ -25,13 +37,13 @@ const convertToTokenizerFormat = (message: Message): ChatMessage | null => {
     // If there are tool calls, convert them to text for token counting
     if (message.tool_calls && message.tool_calls.length > 0) {
       const toolCallsText = message.tool_calls
-        .map((toolCall: ToolCall) => {
-          return `Function call: ${toolCall.function.name}(${toolCall.function.arguments})`
+        .map((toolCall: any) => {
+          return `Function call: ${toolCall.function?.name}(${toolCall.function?.arguments})`
         })
         .join(" ")
 
       return {
-        role: role as "user" | "assistant" | "system",
+        role: role,
         content: toolCallsText,
       }
     }
@@ -49,7 +61,7 @@ const convertToTokenizerFormat = (message: Message): ChatMessage | null => {
 
   // Handle ContentPart array - extract text content
   const textContent = message.content
-    .map((part: ContentPart) => {
+    .map((part: any) => {
       if (part.type === "input_text" && part.text) {
         return part.text
       }
@@ -63,7 +75,7 @@ const convertToTokenizerFormat = (message: Message): ChatMessage | null => {
   // Only return a message if we have actual text content
   if (textContent.trim()) {
     return {
-      role: role as "user" | "assistant" | "system",
+      role: role,
       content: textContent,
     }
   }
@@ -71,7 +83,7 @@ const convertToTokenizerFormat = (message: Message): ChatMessage | null => {
   return null
 }
 
-export const getTokenCount = (messages: Array<Message>) => {
+export const getTokenCount = (messages: Array<TokenizerMessage>) => {
   // Convert messages to tokenizer-compatible format
   const convertedMessages = messages
     .map(convertToTokenizerFormat)

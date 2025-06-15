@@ -1,7 +1,6 @@
 import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
 import { state } from "~/lib/state"
-import consola from "consola"
 
 export const createEmbeddings = async (payload: EmbeddingRequest) => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
@@ -14,9 +13,8 @@ export const createEmbeddings = async (payload: EmbeddingRequest) => {
 
   if (!response.ok) throw new HTTPError("Failed to create embeddings", response)
 
-
   // return (await response.json()) as EmbeddingResponse
-  
+
   const json = await response.json()
 
   return json as EmbeddingResponse

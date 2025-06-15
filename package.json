@@ -29,7 +29,13 @@
     "prepack": "bun run build",
     "prepare": "simple-git-hooks",
     "release": "bumpp && bun publish --access public",
-    "start": "NODE_ENV=production bun run ./src/main.ts"
+    "start": "NODE_ENV=production bun run ./src/main.ts",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "test:integration": "bun test src/tests/integration.test.ts",
+    "test:performance": "bun test src/tests/performance.test.ts",
+    "test:unit": "bun test src/tests/*.test.ts",
+    "test:watch": "bun test --watch"
   },
   "simple-git-hooks": {
     "pre-commit": "bunx lint-staged"

@@ -1,178 +1,70 @@
-import { events } from "fetch-event-stream"
-
 import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
+import { transformModelName } from "~/lib/models"
 import { state } from "~/lib/state"
+import { createStreamingResponse, createStreamingResponseWithFormat } from "~/lib/streaming-utils"
 
 export const createChatCompletions = async (
-  payload: ChatCompletionsPayload,
-) => {
+  payload: any,
+  originalFormat?: string,
+): Promise<any | AsyncIterable<any>> => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
-  for (const message of payload.messages) {
-    intoCopilotMessage(message)
+  // Transform model name
+  if (payload.model) {
+    payload.model = transformModelName(payload.model)
   }
 
-  const visionEnable = payload.messages.some(
-    (x) =>
-      (x.content && typeof x.content !== "string")
-      && x.content.some((x) => x.type === "image_url"),
-  )
+  // Process all models (including Anthropic models)
+  const processedPayload = { ...payload }
 
-  // Check if tools are being used
-  const toolsEnable = Boolean(payload.tools && payload.tools.length > 0)
 
-  const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {
-    method: "POST",
-    headers: copilotHeaders(state, visionEnable),
-    body: JSON.stringify(payload),
-  })
 
-  if (!response.ok) {
-    const errorText = await response.text()
+  try {
+    // Detect vision usage for headers
+    const visionEnable = processedPayload.messages?.some(
+      (message: any) =>
+        Array.isArray(message.content)
+        && message.content.some(
+          (part: any) => part.type === "image_url" || part.type === "image",
+        ),
+    )
 
-    // If tools are not supported, provide a helpful error message
-    if (toolsEnable && response.status === 400) {
+    const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {
+      method: "POST",
+      headers: copilotHeaders(state, visionEnable),
+      body: JSON.stringify(processedPayload),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+
+
+
       throw new HTTPError(
-        `Failed to create chat completions. GitHub Copilot may not support tool calls. Error: ${errorText}`,
-        response
+        `Failed to create chat completions: ${errorText}`,
+        response,
       )
     }
 
-    throw new HTTPError(`Failed to create chat completions: ${errorText}`, response)
-  }
+    if (processedPayload.stream) {
+      return originalFormat === 'anthropic'
+        ? createStreamingResponseWithFormat(response, originalFormat)
+        : createStreamingResponse(response)
+    }
 
-  if (payload.stream) {
-    return events(response)
-  }
-
-  return (await response.json()) as ChatCompletionResponse
-}
-
-const intoCopilotMessage = (message: Message) => {
-  // Skip processing for assistant messages (they may have tool_calls)
-  if (message.role === "assistant") return false
-
-  // Skip processing for tool messages (they have specific format)
-  if (message.role === "tool") return false
-
-  // Skip processing for string content
-  if (typeof message.content === "string") return false
-
-  // Skip processing for null content
-  if (message.content === null) return false
-
-  // Transform content parts for vision support
-  for (const part of message.content) {
-    if (part.type === "input_image") part.type = "image_url"
+    const responseData = (await response.json()) as any
+    return responseData
+  } catch (error) {
+    throw error
   }
 }
 
-// Streaming types
-
-export interface ChatCompletionChunk {
-  choices: [Choice]
-  created: number
-  object: "chat.completion.chunk"
-  id: string
-  model: string
-}
-
-interface Delta {
-  content?: string
-  role?: string
-  tool_calls?: Array<DeltaToolCall>
-}
-
-interface DeltaToolCall {
-  index: number
-  id?: string
-  type?: "function"
-  function?: {
-    name?: string
-    arguments?: string
-  }
-}
-
-interface Choice {
-  index: number
-  delta: Delta
-  finish_reason: "stop" | "tool_calls" | "length" | "content_filter" | null
-  logprobs: null
-}
-
-// Non-streaming types
-
-export interface ChatCompletionResponse {
-  id: string
-  object: string
-  created: number
-  model: string
-  choices: [ChoiceNonStreaming]
-}
-
-interface ChoiceNonStreaming {
-  index: number
-  message: Message
-  logprobs: null
-  finish_reason: "stop" | "tool_calls" | "length" | "content_filter"
-}
-
-// Payload types
+// Flexible types for maximum compatibility
+export type MessageRole = "user" | "assistant" | "system" | "tool"
 
 export interface ChatCompletionsPayload {
-  messages: Array<Message>
+  messages: Array<any>
   model: string
-  temperature?: number
-  top_p?: number
-  max_tokens?: number
-  stop?: Array<string>
-  n?: number
-  stream?: boolean
-  tools?: Array<Tool>
-  tool_choice?: "none" | "auto" | ToolChoice
+  [key: string]: any // Allow any additional fields
 }
-
-export interface Tool {
-  type: "function"
-  function: {
-    name: string
-    description?: string
-    parameters?: Record<string, unknown>
-  }
-}
-
-export interface ToolChoice {
-  type: "function"
-  function: {
-    name: string
-  }
-}
-
-export interface Message {
-  role: "user" | "assistant" | "system" | "tool"
-  content: string | Array<ContentPart> | null
-  tool_calls?: Array<ToolCall>
-  tool_call_id?: string
-  name?: string
-}
-
-// https://platform.openai.com/docs/api-reference
-
-export interface ContentPart {
-  type: "input_image" | "input_text" | "image_url"
-  text?: string
-  image_url?: string
-}
-
-export interface ToolCall {
-  id: string
-  type: "function"
-  function: {
-    name: string
-    arguments: string
-  }
-}
-
-// https://platform.openai.com/docs/guides/images-vision#giving-a-model-images-as-input
-// Note: copilot use "image_url", but openai use "input_image"
