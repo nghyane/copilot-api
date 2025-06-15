@@ -13,7 +13,7 @@
     "type": "git",
     "url": "git+https://github.com/nghyane/copilot-api.git"
   },
-  "author": "Erick Christian <erickchristian48@gmail.com>",
+  "author": "Nghyane <hoangvananhnghia@gmail.com>",
   "type": "module",
   "bin": {
     "copilot-api": "./dist/main.js"
