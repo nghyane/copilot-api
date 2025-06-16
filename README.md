@@ -9,14 +9,70 @@ This project is a reverse-engineered implementation of the GitHub Copilot API cr
 
 A wrapper around GitHub Copilot API to make it OpenAI compatible, making it usable for other tools like AI assistants, local interfaces, and development utilities.
 
-## ✨ Latest Features (v1.0.1-beta.1)
+## ✨ Latest Features (v1.0.1-beta.2)
 
-- **🔍 Smart Format Detection**: Automatically detects Anthropic vs OpenAI request formats
-- **🚀 Enhanced Streaming**: Improved streaming response handling with better error management
+- **🔄 Advanced Format Transformation**: Automatically detects and transforms between Anthropic and OpenAI request/response formats
+- **📡 Enhanced Streaming Support**: Full streaming compatibility for both OpenAI and Anthropic formats
+- **🔍 Smart Format Detection**: Automatically identifies request format based on field presence and structure
 - **🤖 Universal Model Support**: Support for all GitHub Copilot models including Claude (Anthropic) models
 - **🐳 Multi-Architecture Docker**: Docker images support both AMD64 and ARM64 architectures
 - **⚡ Optimized Performance**: Simplified request processing with better compatibility
 - **🛠️ Improved Error Handling**: Better error messages and debugging capabilities
+
+## 🔄 Format Transformation
+
+The API now includes a complete transformation system that:
+
+- **Auto-detects** incoming request format (OpenAI vs Anthropic)
+- **Transforms** Anthropic requests to OpenAI format for processing
+- **Converts** OpenAI responses back to Anthropic format when needed
+- **Supports** both streaming and non-streaming responses
+- **Maintains** full compatibility with tools that use either format
+
+### Supported Format Differences
+
+| Feature | OpenAI Format | Anthropic Format | Status |
+|---------|---------------|------------------|---------|
+| System Prompt | `messages[0].role: "system"` | `system: string \| object[]` | ✅ |
+| Max Tokens | Optional `max_tokens` | Required `max_tokens` | ✅ |
+| Stop Sequences | `stop: string \| string[]` | `stop_sequences: string[]` | ✅ |
+| Tools | `tools[].function` | `tools[].input_schema` | ✅ |
+| Tool Choice | `tool_choice: "auto" \| object` | `tool_choice: {type: "auto"}` | ✅ |
+| Images | `type: "image_url"` | `type: "image", source: {}` | ✅ |
+| Response Format | `choices[].message` | `content[].text` | ✅ |
+| Streaming | SSE with `data:` prefix | Event-based SSE | ✅ |
+| Metadata | `user: string` | `metadata: {user_id}` | ✅ |
+
+### Example Usage
+
+The API automatically handles format conversion:
+
+```bash
+# Anthropic format request
+curl http://localhost:4141/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "system": "You are a helpful assistant",
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'
+
+# OpenAI format request  
+curl http://localhost:4141/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant"},
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'
+```
+
+Both requests work seamlessly and return responses in their respective formats.
 
 ## Demo
 

@@ -10,14 +10,19 @@ import { state } from "./state"
  */
 export function transformModelName(modelName: string): string {
   // Handle disguised Claude models - map back to real Claude models
+  console.log("Transforming model name:", modelName)
+
   if (modelName === "gpt-4.1") {
+    return "claude-sonnet-4"
+  }
+
+  if (modelName.startsWith("claude-sonnet-4-")) {
     return "claude-sonnet-4"
   }
 
   if (modelName.startsWith("gpt-4.1-")) {
     return "gpt-4.1"
   }
-
 
   return modelName
 }
