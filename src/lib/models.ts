@@ -3,22 +3,21 @@ import { getModels } from "~/services/copilot/get-models"
 import { state } from "./state"
 
 /**
- * Transform model name from client-facing format to internal format
- * Example: "claude-4-sonnet" -> "claude-sonnet-4"
+ * Transform disguised model names back to real Claude model names
+ *
+ * STRATEGY: Cursor sees "gpt-4-claude-sonnet-4" and sends OpenAI format,
+ * but we need to map it back to real Claude model for GitHub Copilot API.
  */
 export function transformModelName(modelName: string): string {
-  if (modelName === "claude-4-sonnet") {
+  // Handle disguised Claude models - map back to real Claude models
+  if (modelName === "gpt-4.1") {
     return "claude-sonnet-4"
   }
 
-  // claude-4-sonnet-20250514
-  if (modelName.startsWith("claude-sonnet-4-")) {
-    return "claude-sonnet-4"
+  if (modelName.startsWith("gpt-4.1-")) {
+    return "gpt-4.1"
   }
 
-  if (modelName.startsWith("claude-3-7-sonnet-")) {
-    return "claude-sonnet-3.7"
-  }
 
   return modelName
 }

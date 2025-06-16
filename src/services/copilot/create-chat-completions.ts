@@ -2,11 +2,10 @@ import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
 import { transformModelName } from "~/lib/models"
 import { state } from "~/lib/state"
-import { createStreamingResponse, createStreamingResponseWithFormat } from "~/lib/streaming-utils"
+import { createStreamingResponse } from "~/lib/streaming-utils"
 
 export const createChatCompletions = async (
   payload: any,
-  originalFormat?: string,
 ): Promise<any | AsyncIterable<any>> => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
@@ -48,9 +47,7 @@ export const createChatCompletions = async (
     }
 
     if (processedPayload.stream) {
-      return originalFormat === 'anthropic'
-        ? createStreamingResponseWithFormat(response, originalFormat)
-        : createStreamingResponse(response)
+      return createStreamingResponse(response)
     }
 
     const responseData = (await response.json()) as any

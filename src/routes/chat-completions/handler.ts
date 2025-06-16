@@ -1,9 +1,7 @@
 import type { Context } from "hono"
 
 import { streamSSE, type SSEMessage } from "hono/streaming"
-
 import { awaitApproval } from "~/lib/approval"
-import { detectFormat, anthropicToOpenAI, openAIToAnthropic } from "~/lib/format-converter"
 import { isNullish } from "~/lib/is-nullish"
 import { transformModelName } from "~/lib/models"
 import { checkRateLimit } from "~/lib/rate-limit"
@@ -15,13 +13,15 @@ export async function handleCompletion(c: Context) {
 
   const originalPayload = await c.req.json()
 
+  // No format conversion - pass through all requests as OpenAI format
+  let payload = originalPayload
 
+  // Transform model name if needed
+  if (payload.model) {
+    payload.model = transformModelName(payload.model)
+  }
 
-  // Detect and convert format if needed
-  const formatInfo = detectFormat(originalPayload)
-  const payload = formatInfo.isAnthropic
-    ? anthropicToOpenAI(originalPayload)
-    : originalPayload
+  // All requests are passed through as OpenAI format
 
 
 
@@ -43,12 +43,10 @@ export async function handleCompletion(c: Context) {
     }
   }
 
-  const response = await createChatCompletions(payload, formatInfo.originalFormat)
+  const response = await createChatCompletions(payload)
 
   if (isNonStreaming(response)) {
-    // Convert response back to original format if needed
-    const finalResponse = openAIToAnthropic(response, formatInfo.originalFormat)
-    return c.json(finalResponse)
+    return c.json(response)
   }
 
   return streamSSE(c, async (stream) => {
