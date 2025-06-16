@@ -9,6 +9,15 @@ This project is a reverse-engineered implementation of the GitHub Copilot API cr
 
 A wrapper around GitHub Copilot API to make it OpenAI compatible, making it usable for other tools like AI assistants, local interfaces, and development utilities.
 
+## ✨ Latest Features (v1.0.1-beta.1)
+
+- **🔍 Smart Format Detection**: Automatically detects Anthropic vs OpenAI request formats
+- **🚀 Enhanced Streaming**: Improved streaming response handling with better error management
+- **🤖 Universal Model Support**: Support for all GitHub Copilot models including Claude (Anthropic) models
+- **🐳 Multi-Architecture Docker**: Docker images support both AMD64 and ARM64 architectures
+- **⚡ Optimized Performance**: Simplified request processing with better compatibility
+- **🛠️ Improved Error Handling**: Better error messages and debugging capabilities
+
 ## Demo
 
 https://github.com/user-attachments/assets/7654b383-669d-4eb9-b23c-06d7aefee8c5
@@ -28,16 +37,42 @@ bun install
 
 ## Using with Docker
 
-Build image
+### Pre-built Images (Recommended)
+
+Pull and run the latest image from Docker Hub:
+
+```sh
+# Pull the latest image
+docker pull nghyane/copilot-api:latest
+
+# Run with GitHub token
+docker run -p 4141:4141 -e GH_TOKEN=your_github_token nghyane/copilot-api:latest
+```
+
+### Multi-Architecture Support
+
+The Docker images support both AMD64 and ARM64 architectures:
+
+```sh
+# For ARM64 (Apple Silicon, ARM servers)
+docker pull nghyane/copilot-api:latest-multiarch
+
+# Run multi-arch image
+docker run -p 4141:4141 -e GH_TOKEN=your_github_token nghyane/copilot-api:latest-multiarch
+```
+
+### Build from Source
+
+Build your own image:
 
 ```sh
 docker build -t copilot-api .
 ```
 
-Run the container
+Run the container:
 
 ```sh
-docker run -p 4141:4141 copilot-api
+docker run -p 4141:4141 -e GH_TOKEN=your_github_token copilot-api
 ```
 
 ## Using with npx
@@ -142,7 +177,23 @@ bun run dev
 bun run start
 ```
 
-## Usage Tips
+## 🔧 Model Support
+
+### Supported Models
+
+The API supports all GitHub Copilot models including:
+
+- **OpenAI Models**: GPT-4, GPT-4 Turbo, GPT-3.5 Turbo
+- **Anthropic Models**: Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku
+- **Other Models**: As available through GitHub Copilot
+
+### Format Compatibility
+
+- **Automatic Detection**: The API automatically detects whether incoming requests are in OpenAI or Anthropic format
+- **Universal Support**: Works with tools that send either format (Cursor, Continue, etc.)
+- **No Conversion Needed**: Requests are processed in their original format for maximum compatibility
+
+## 💡 Usage Tips
 
 - Consider using free models (e.g., Gemini, Mistral, Openrouter) as the `weak-model`
 - Use architect mode sparingly
@@ -150,6 +201,7 @@ bun run start
 - Be mindful that Claude 3.7 thinking mode consumes more tokens
 - Enable the `--manual` flag to review and approve each request before processing
 - If you have a GitHub business or enterprise plan account with Copilot, use the `--business` or `--enterprise` flag respectively
+- For Claude models, the API maintains full compatibility with both OpenAI and Anthropic request formats
 
 ### Manual Request Approval
 
@@ -160,3 +212,96 @@ When using the `--manual` flag, the server will prompt you to approve each incom
 ```
 
 This helps you control usage and monitor requests in real-time.
+
+## 🚀 Technical Improvements
+
+### Enhanced Streaming
+
+- **Better Error Handling**: Improved stream interruption handling and connection management
+- **Optimized Performance**: Reduced latency and better resource utilization
+- **Connection Resilience**: Automatic cleanup of broken connections
+
+### Format Detection
+
+- **Smart Detection**: Automatically identifies Anthropic vs OpenAI request formats
+- **No Conversion Overhead**: Processes requests in their native format
+- **Universal Compatibility**: Works with any client that sends either format
+
+### Docker Enhancements
+
+- **Multi-Architecture**: Native support for AMD64 and ARM64
+- **Optimized Images**: Smaller image sizes with better caching
+- **Production Ready**: Multi-stage builds for optimal performance
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **Tool Calling Issues with Claude Models**
+   - Some Claude models may have limited tool calling support
+   - Try using different model variants if tool calls fail
+
+2. **Format Detection Problems**
+   - The API automatically detects request formats
+   - If you encounter issues, check the request structure matches OpenAI or Anthropic specs
+
+3. **Docker Issues**
+   - Use the appropriate architecture image for your platform
+   - Ensure GitHub token is properly set via environment variable
+
+### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
+```sh
+npx copilot-api@latest start --verbose
+```
+
+## 📦 Available Images
+
+| Image | Architecture | Size | Use Case |
+|-------|-------------|------|----------|
+| `nghyane/copilot-api:latest` | AMD64 | ~215MB | Standard x86_64 systems |
+| `nghyane/copilot-api:latest-multiarch` | AMD64 + ARM64 | ~274MB | Universal compatibility |
+| `nghyane/copilot-api:v1.0.0` | AMD64 | ~215MB | Specific version |
+
+## 📝 Changelog
+
+### v1.0.1-beta.1 (Latest)
+- ✨ Added smart format detection for Anthropic vs OpenAI requests
+- 🚀 Enhanced streaming response handling with better error management
+- 🤖 Improved support for all GitHub Copilot models including Claude
+- 🐳 Added multi-architecture Docker support (AMD64 + ARM64)
+- ⚡ Optimized request processing and removed unnecessary format conversion
+- 🛠️ Better error handling and debugging capabilities
+- 🔧 Simplified codebase with improved maintainability
+
+### v1.0.0
+- 🎉 Initial stable release
+- 📦 NPM package publication
+- 🐳 Docker support
+- 🔐 GitHub authentication flow
+- 📊 Rate limiting and manual approval features
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Development Setup
+
+1. Clone the repository
+2. Install dependencies: `bun install`
+3. Run in development mode: `bun run dev`
+4. Build for production: `bun run build`
+
+## 📄 License
+
+This project is for educational purposes only. Please respect GitHub's terms of service and use responsibly.
+
+## ⭐ Support
+
+If you find this project helpful, please consider:
+- ⭐ Starring the repository
+- 🐛 Reporting issues
+- 💡 Suggesting improvements
+- ☕ [Supporting the developer](https://ko-fi.com/E1E519XS7W)
