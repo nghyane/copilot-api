@@ -2,7 +2,6 @@
 
 import { defineCommand, runMain } from "citty"
 import consola from "consola"
-import { serve, type ServerHandler } from "srvx"
 
 import { auth } from "./auth"
 import { cacheModels } from "./lib/models"
@@ -53,9 +52,14 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   const serverUrl = `http://localhost:${options.port}`
   consola.box(`Server started at ${serverUrl}`)
 
-  serve({
-    fetch: server.fetch as ServerHandler,
+  // Use Bun.serve directly for better timeout control
+  Bun.serve({
+    fetch: server.fetch,
     port: options.port,
+    // Configure timeouts for Claude streaming with long tool arguments
+    // Bun.serve idleTimeout max is 255 seconds
+    idleTimeout: 255, // Maximum allowed by Bun (4+ minutes)
+    development: process.env.NODE_ENV !== "production",
   })
 }
 

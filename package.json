@@ -42,8 +42,7 @@
     "consola": "^3.4.2",
     "fetch-event-stream": "^0.1.5",
     "gpt-tokenizer": "^2.9.0",
-    "hono": "^4.7.11",
-    "srvx": "^0.7.5"
+    "hono": "^4.7.11"
   },
   "devDependencies": {
     "@echristian/eslint-config": "^0.0.43",
