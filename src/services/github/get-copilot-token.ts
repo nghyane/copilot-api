@@ -1,4 +1,4 @@
-import { GITHUB_API_BASE_URL, githubHeaders } from "~/lib/api-config"
+import { GITHUB_API_BASE_URL, githubHeaders, getGithubAgent } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
 import { state } from "~/lib/state"
 
@@ -7,6 +7,8 @@ export const getCopilotToken = async () => {
     `${GITHUB_API_BASE_URL}/copilot_internal/v2/token`,
     {
       headers: githubHeaders(state),
+      // @ts-ignore - Bun supports agent option
+      agent: getGithubAgent(),
     },
   )
 

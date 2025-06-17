@@ -12,3 +12,13 @@ node_modules/
 
 # build output
 dist/
+
+# logs
+logs/
+*.log
+
+.env
+
+.claude/
+
+CLAUDE.MD

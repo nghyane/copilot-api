@@ -1,0 +1,4 @@
+{
+  "ignoreBinaries": ["publish"],
+  "ignoreExportsUsedInFile": true
+} 

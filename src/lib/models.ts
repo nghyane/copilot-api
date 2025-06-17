@@ -9,19 +9,20 @@ import { state } from "./state"
  * but we need to map it back to real Claude model for GitHub Copilot API.
  */
 export function transformModelName(modelName: string): string {
-  // Handle disguised Claude models - map back to real Claude models
-  console.log("Transforming model name:", modelName)
 
-  if (modelName === "gpt-4.1") {
-    return "claude-sonnet-4"
-  }
+  // Pattern-based mappings for prefix matches
+  const prefixMappings: Array<[string, string]> = [
+    ["claude-sonnet-4-", "claude-sonnet-4"],
+    ["claude-4-sonnet", "claude-sonnet-4"],
+    ["claude-3-7-sonnet", "claude-3.7-sonnet"],
+    ["claude-3-5-sonnet", "claude-3.5-sonnet"],
+    ["gpt-4.1", "claude-sonnet-4"]
+  ]
 
-  if (modelName.startsWith("claude-sonnet-4-")) {
-    return "claude-sonnet-4"
-  }
-
-  if (modelName.startsWith("gpt-4.1-")) {
-    return "gpt-4.1"
+  for (const [prefix, target] of prefixMappings) {
+    if (modelName.startsWith(prefix)) {
+      return target
+    }
   }
 
   return modelName

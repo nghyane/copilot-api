@@ -1,9 +1,10 @@
 import type { Context } from "hono"
 
-import { streamSSE, type SSEMessage } from "hono/streaming"
+import { streamSSE } from "hono/streaming"
 import { awaitApproval } from "~/lib/approval"
-import { isNullish } from "~/lib/is-nullish"
+import { detectFormat, toOpenAI, toAnthropic, transformStream } from "~/lib/format-transformer"
 import { transformModelName } from "~/lib/models"
+import { PayloadLogger } from "~/lib/payload-logger"
 import { checkRateLimit } from "~/lib/rate-limit"
 import { state } from "~/lib/state"
 import { createChatCompletions } from "~/services/copilot/create-chat-completions"
@@ -11,87 +12,83 @@ import { createChatCompletions } from "~/services/copilot/create-chat-completion
 export async function handleCompletion(c: Context) {
   await checkRateLimit(state)
 
-  const originalPayload = await c.req.json()
+  const payload = await c.req.json()
+  const logger = PayloadLogger.getInstance()
 
-  // No format conversion - pass through all requests as OpenAI format
-  let payload = originalPayload
+  // Parallel: detect format and start logging
+  const originalFormat = detectFormat(payload)
+  const requestIdPromise = logger.logRequest(payload, originalFormat)
 
-  // Transform model name if needed
-  if (payload.model) {
-    payload.model = transformModelName(payload.model)
+  // Parallel: transform payload and model name
+  const [processedPayload, requestId] = await Promise.all([
+    Promise.resolve(originalFormat === 'anthropic' ? toOpenAI(payload) : payload),
+    requestIdPromise
+  ])
+
+  if (processedPayload.model) {
+    processedPayload.model = transformModelName(processedPayload.model)
   }
-
-  // All requests are passed through as OpenAI format
-
-
-
-
-
-
 
   if (state.manualApprove) await awaitApproval()
 
-  if (isNullish(payload.max_tokens) && payload.model) {
-    // Transform model name to internal format for lookup
-    const internalModelName = transformModelName(payload.model)
-    const selectedModel = state.models?.data.find(
-      (model) => model.id === internalModelName,
-    )
+  try {
+    const response = await createChatCompletions(processedPayload)
 
-    if (selectedModel?.capabilities?.limits?.max_output_tokens) {
-      payload.max_tokens = selectedModel.capabilities.limits.max_output_tokens
+    if (typeof response === 'object' && response.choices) {
+      // Non-streaming response - parallel processing
+      const [finalResponse] = await Promise.all([
+        Promise.resolve(originalFormat === 'anthropic' 
+          ? toAnthropic(response, payload.model) 
+          : response),
+        // Set headers in parallel
+        originalFormat === 'anthropic' ? Promise.resolve().then(() => {
+          c.header('anthropic-version', '2023-06-01')
+          c.header('anthropic-beta', 'messages-2023-12-15')
+          c.header('request-id', requestId)
+        }) : Promise.resolve()
+      ])
+
+      // Log response asynchronously (don't wait)
+      logger.logResponse(requestId, finalResponse, originalFormat).catch(console.error)
+
+      return c.json(finalResponse)
     }
-  }
 
-  const response = await createChatCompletions(payload)
+    // Streaming response - parallel setup
+    const [stream] = await Promise.all([
+      Promise.resolve(originalFormat === 'anthropic'
+        ? transformStream(response as AsyncIterable<any>, payload.model)
+        : response as AsyncIterable<any>),
+      // Set headers in parallel
+      originalFormat === 'anthropic' ? Promise.resolve().then(() => {
+        c.header('anthropic-version', '2023-06-01')
+        c.header('anthropic-beta', 'messages-2023-12-15')
+        c.header('request-id', requestId)
+      }) : Promise.resolve()
+    ])
 
-  if (isNonStreaming(response)) {
-    return c.json(response)
-  }
-
-  return streamSSE(c, async (stream) => {
-    try {
-      for await (const chunk of response as AsyncIterable<any>) {
-        // Check if connection is still alive
-        if (stream.closed) {
-          break
-        }
-
-        await stream.writeSSE(chunk as SSEMessage)
-      }
-    } catch (error) {
-      // Send error event to client if connection is still open
-      if (!stream.closed) {
-        try {
-          await stream.writeSSE({
-            event: "error",
-            data: JSON.stringify({ error: "Stream interrupted" }),
+    return streamSSE(c, async (streamWriter) => {
+      for await (const event of stream) {
+        // Handle different event formats
+        if (originalFormat === 'anthropic') {
+          // Anthropic format: {event: "content_block_delta", data: "..."}
+          await streamWriter.writeSSE({
+            event: event.event,
+            data: event.data
           })
-        } catch {
-          // Ignore write errors to closed streams
+        } else {
+          // OpenAI format: {data: "..."}
+          await streamWriter.writeSSE({
+            data: event.data
+          })
         }
       }
-    } finally {
-      // Ensure stream is properly closed
-      if (!stream.closed) {
-        try {
-          await stream.writeSSE({ event: "done", data: "[DONE]" })
-        } catch {
-          // Ignore close errors
-        }
-      }
-    }
-  })
+    })
+
+  } catch (error) {
+    // Log error asynchronously (don't block error response)
+    logger.logError(requestId, error, originalFormat).catch(console.error)
+    throw error
+  }
 }
 
-const isNonStreaming = (
-  response: Awaited<ReturnType<typeof createChatCompletions>>,
-): response is Record<string, any> => {
-  return (
-    response
-    && typeof response === "object"
-    && (Object.hasOwn(response, "choices")
-      || Object.hasOwn(response, "content")) // Support both OpenAI and Anthropic formats
-    && !response[Symbol.asyncIterator] // Not an async iterable
-  )
-}

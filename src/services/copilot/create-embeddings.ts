@@ -1,4 +1,4 @@
-import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
+import { copilotHeaders, copilotBaseUrl, getCopilotAgent } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
 import { state } from "~/lib/state"
 
@@ -9,6 +9,8 @@ export const createEmbeddings = async (payload: EmbeddingRequest) => {
     method: "POST",
     headers: copilotHeaders(state),
     body: JSON.stringify(payload),
+    // @ts-ignore - Bun supports agent option
+    agent: getCopilotAgent(),
   })
 
   if (!response.ok) throw new HTTPError("Failed to create embeddings", response)

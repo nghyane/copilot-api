@@ -1,6 +1,26 @@
 import { randomUUID } from "node:crypto"
+import { Agent } from "node:https"
 
 import type { State } from "./state"
+
+// Connection pooling agents for better performance
+const githubAgent = new Agent({
+  keepAlive: true,
+  maxSockets: 10,
+  maxFreeSockets: 5,
+  timeout: 30000,
+})
+
+const copilotAgent = new Agent({
+  keepAlive: true,
+  maxSockets: 15,
+  maxFreeSockets: 8,
+  timeout: 60000, // Longer timeout for streaming
+})
+
+// Export agents for use in fetch calls
+export const getGithubAgent = () => githubAgent
+export const getCopilotAgent = () => copilotAgent
 
 export const standardHeaders = () => ({
   "content-type": "application/json",

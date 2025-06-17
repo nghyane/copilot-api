@@ -3,6 +3,7 @@ import {
   GITHUB_BASE_URL,
   GITHUB_CLIENT_ID,
   standardHeaders,
+  getGithubAgent,
 } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
 
@@ -14,6 +15,8 @@ export async function getDeviceCode(): Promise<DeviceCodeResponse> {
       client_id: GITHUB_CLIENT_ID,
       scope: GITHUB_APP_SCOPES,
     }),
+    // @ts-ignore - Bun supports agent option
+    agent: getGithubAgent(),
   })
 
   if (!response.ok) throw new HTTPError("Failed to get device code", response)

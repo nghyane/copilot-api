@@ -4,6 +4,7 @@ import {
   GITHUB_BASE_URL,
   GITHUB_CLIENT_ID,
   standardHeaders,
+  getGithubAgent,
 } from "~/lib/api-config"
 import { sleep } from "~/lib/sleep"
 
@@ -27,6 +28,8 @@ export async function pollAccessToken(
           device_code: deviceCode.device_code,
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         }),
+        // @ts-ignore - Bun supports agent option
+        agent: getGithubAgent(),
       },
     )
 

@@ -1,15 +1,41 @@
-import { copilotBaseUrl, copilotHeaders } from "~/lib/api-config"
+import { copilotBaseUrl, copilotHeaders, getCopilotAgent } from "~/lib/api-config"
 import { HTTPError } from "~/lib/http-error"
 import { state } from "~/lib/state"
 
-export const getModels = async () => {
+// Cache for models with 5-minute TTL
+let modelsCache: ModelsResponse | null = null
+let modelsCacheExpiry = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+export const getModels = async (): Promise<ModelsResponse> => {
+  const now = Date.now()
+  
+  // Return cached models if still valid
+  if (modelsCache && now < modelsCacheExpiry) {
+    return modelsCache
+  }
+
   const response = await fetch(`${copilotBaseUrl(state)}/models`, {
     headers: copilotHeaders(state),
+    // @ts-ignore - Bun supports agent option
+    agent: getCopilotAgent(),
   })
 
   if (!response.ok) throw new HTTPError("Failed to get models", response)
 
-  return (await response.json()) as ModelsResponse
+  const models = (await response.json()) as ModelsResponse
+  
+  // Update cache
+  modelsCache = models
+  modelsCacheExpiry = now + CACHE_DURATION
+  
+  return models
+}
+
+// Clear cache manually if needed
+export const clearModelsCache = () => {
+  modelsCache = null
+  modelsCacheExpiry = 0
 }
 
 export interface ModelsResponse {

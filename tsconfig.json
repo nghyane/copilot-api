@@ -7,7 +7,7 @@
 
     "moduleResolution": "Bundler",
     "moduleDetection": "force",
-    "erasableSyntaxOnly": true,
+    "erasableSyntaxOnly": false,
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
@@ -17,7 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "noImplicitAny": true,
-    
+
 
     "baseUrl": ".",
     "paths": {
